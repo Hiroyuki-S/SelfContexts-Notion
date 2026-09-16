@@ -205,3 +205,29 @@ Notion MCP で 振り返りログDB に1ページ作成
   - [ ] 1回分を実際に流して記録されることを確認
   - [ ] Routineを設定して定期実行に乗せる
 - [ ] フェーズ4: 運用しながら質問を育てる
+
+## 9. 定期実行（Routine）
+
+| Routine | スケジュール（JST） | trigger_id |
+|---------|-------------------|-----------|
+| 🌙 日次の振り返り | 平日 21:30 | `trig_01T71AByxKHjPZ3nMNprSdpV` |
+| 📘 週次の振り返り | 日曜 20:00 | `trig_01BU8oYbyJA3kxXj2wQgHieu` |
+| 📙 月次の振り返り | 毎月1日 20:00 | `trig_01MxHzaePkdfemv9dWPBzqbz` |
+| 📕 四半期の振り返り | 1/4/7/10月の2日 20:00 | `trig_01CuWBEpoMBivMnG3gFaB2VL` |
+
+いずれも発火のたびに新しいセッションを作り、プッシュ通知を出す。
+
+### 既知の制約（要対応）
+
+Routine を CLI から作成すると **Notionコネクタが引き継がれない**。
+このままでは発火したセッションが Notion に書き込めない。
+
+対応：claude.ai の Routines 画面で各Routineを開き、Notionコネクタを有効にする。
+（またはRoutines画面から作り直す。プロンプトは上記のtrigger_idから確認できる）
+
+### 前提
+
+Routineが作るセッションは既定ブランチをクローンするため、
+`.claude/skills/reflection/` が main に入っていないとスキルが読まれない。
+各Routineのプロンプトにはフォールバックとして手順とDB IDを直書きしてあるので
+未マージでも動作はするが、**main へのマージ後が本来の状態**。
