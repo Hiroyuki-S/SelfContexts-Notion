@@ -1,0 +1,152 @@
+# 振り返りの質問セット（唯一の正）
+# 答えにくい質問が出てきたら、このファイルだけを直す。
+
+meta:
+  timezone: Asia/Tokyo
+  # 平日の夜の散歩が主な記録タイミング。歩かない日・答えられない日は飛ばしてよい。
+  daily_target_days: [mon, tue, wed, thu, fri]
+  allow_skip: true
+  # 欠損を前提にした集計ルール
+  aggregation:
+    # 数値の平均は「記録がある日」だけで計算する。欠損日を0や平均値で埋めない。
+    ignore_missing_days: true
+    # 連続記録日数（ストリーク）は追わない。途切れたことを咎めない。
+    track_streak: false
+    # 週次は日次が0件でも成立させる（記憶ベースの短縮版に切り替える）
+    min_daily_for_weekly: 0
+
+daily:
+  title: 日次の振り返り
+  duration: 約3分
+  context: 夜の散歩中・音声
+  intro: |
+    今日の振り返り、5つ聞きます。歩きながらでいいので、思いついた順で。
+    答えにくいものは「パス」で飛ばします。
+  questions:
+    - id: energy_up
+      text: 今日いちばんエネルギーが上がった瞬間は？
+      purpose: 強み・情熱の在りか
+      followup: そのとき何をしていた？
+    - id: energy_down
+      text: 逆に、いちばん消耗した・気が重かった瞬間は？
+      purpose: 消耗源・弱みのトリガー
+      followup: そのとき何を感じた？
+    - id: like_myself
+      text: 今日の自分の判断や動きで「これは自分らしい」と思えたことは？
+      purpose: 無自覚に出ている癖＝才能の候補
+      followup: 小さいことでいい。誰かに礼を言われたことでも。
+    - id: not_working
+      text: うまくいかなかったことは？ なぜそうなったと思う？
+      purpose: 失敗のパターン
+      followup: 同じことは前にもあった？
+    - id: condition
+      text: 最後に数字で。エネルギー・集中・気分、それぞれ5段階でいくつ？
+      purpose: 唯一の定量軸
+      type: numbers
+      fields: [エネルギー, 集中, 気分]
+  optional:
+    - id: tomorrow
+      text: 明日ひとつだけ変えるなら？
+      purpose: 小さな実験。週次で結果を回収する
+      ask_when: 本人に余裕がありそうなとき、または前回の実験が完了したとき
+
+weekly:
+  title: 週次の振り返り
+  duration: 約15分
+  context: 日曜の夜・腰を据えて
+  # ゼロから思い出させない。まず材料を出してから聞く。
+  preflight:
+    - 今週（月〜日）の日次ログを取得する。0件でも続行する。
+    - 記録があった日数、数値の平均と推移、繰り返し出たキーワードを整理する。
+    - 未完了の「次の実験」と、レビュー頻度=週次 の目標を取得する。
+  intro: |
+    今週の記録は{記録日数}日分でした。まず要約を出すので、それに反応する形で進めましょう。
+  questions:
+    - id: summary_check
+      text: （要約を提示して）この見立て、当たってる？ 違和感があるのはどこ？
+      purpose: 解釈のすり合わせ
+    - id: best_moment
+      text: 今週いちばん手応えがあった場面は？ そこで効いた自分の強みは何だった？
+      purpose: 強みの言語化
+    - id: stuck_moment
+      text: 今週いちばん引っかかった場面は？ 同じことは前にもあった？
+      purpose: 単発かパターンかの切り分け
+    - id: experiment_result
+      text: 先週立てた実験「{前回の実験}」はどうなった？
+      purpose: 実験の回収
+      skip_when: 前回の実験がない
+    - id: goal_review
+      text: 短期目標「{目標名}」、今週は近づいた？ 次の一手は？
+      purpose: 短期目標のレビュー
+      repeat_for: レビュー頻度=週次 かつ 状態=進行中 の目標（最大3件）
+    - id: next_experiment
+      text: 来週ひとつだけ試すことを決めるとしたら？
+      purpose: 次週の実験
+    - id: self_rating
+      text: 今週の自己評価を5段階で。その理由も一言。
+      purpose: 定量軸
+      type: number
+  outputs:
+    - 振り返りログに週次ページを1件作成（記録日数・自己評価・次の実験を含む）
+    - 自己理解台帳を1〜3件、追加または更新
+    - レビューした短期目標の「次の一手」「最終レビュー」を更新
+
+monthly:
+  title: 月次の振り返り
+  duration: 約30分
+  context: 月末または月初
+  preflight:
+    - 先月の週次ログ全件と、実験の結果一覧を取得する。
+    - 自己理解台帳のうち、先月に追加・更新された項目を取得する。
+    - レビュー頻度=月次 の目標（中長期目標）を取得する。
+  questions:
+    - id: month_in_a_word
+      text: 今月の自分を一言でいうと？
+    - id: strength_update
+      text: 今月、効いた強みは？ 逆に、思ったより効かなかった強みは？
+      purpose: 強み仮説の更新
+    - id: weakness_progress
+      text: 弱みへの対策は機能した？ 別の手が要りそう？
+      purpose: 対策の有効性判定
+    - id: conditions
+      text: 今月、自分が強かった条件と弱かった条件は何だった？（時間帯・人数・締切の有無・場所・体調）
+      purpose: 強みは「条件」とセットで初めて使える。月次の核。
+    - id: goal_review
+      text: 中長期目標「{目標名}」の進み具合は？ 短期目標とつながってる？
+      repeat_for: レビュー頻度=月次 かつ 状態=進行中 の目標
+    - id: next_focus
+      text: 来月のフォーカスをひとつだけ決めるなら？
+  outputs:
+    - 振り返りログに月次ページを1件作成
+    - 自己理解台帳の状態遷移（仮説→検証中→確信あり／棄却）を反映
+    - 中長期目標の進捗・次の一手・最終レビューを更新
+
+quarterly:
+  title: 四半期の振り返り
+  duration: 約60分
+  context: 3ヶ月ごと
+  preflight:
+    - 3ヶ月分の月次ログと、自己理解台帳の全項目（状態遷移の履歴つき）を取得する。
+    - 目標DBの全階層（人生目標・中長期目標・短期目標）を取得する。
+    - 1年前の同時期のログがあれば併せて取得する。
+  questions:
+    - id: ledger_rewrite
+      text: （台帳を提示して）確信に変わったもの、棄却するもの、表現を変えたいものは？
+      purpose: 台帳の書き直し
+    - id: values_check
+      text: この3ヶ月で守れていた価値観と、裏切っていた価値観は？
+    - id: life_goal_review
+      text: 人生目標「{目標名}」は今も本心？ 言い方を変えたくなってない？
+      repeat_for: 階層=人生目標 の全目標
+      purpose: 人生目標は四半期でしか触らない。頻繁に問うと疲れるため。
+    - id: long_term_review
+      text: 中長期目標の取捨選択。続けるもの、やめるもの、足すものは？
+    - id: year_diff
+      text: 1年前の自分と比べて、明確に変わったことは？
+      skip_when: 1年前のログがない
+    - id: next_theme
+      text: 次の四半期のテーマを一文にすると？
+  outputs:
+    - 振り返りログに四半期ページを1件作成
+    - 自己理解台帳の全面見直し
+    - 目標DBの階層の張り直し（短期目標の再設定を含む）
