@@ -58,7 +58,7 @@ rules:
 
   # --- 日用品 ---
   - category: 日用品
-    keywords: [セリア, ダイソー, キャンドゥ, ダイソー, 無印良品, ムジルシ, ニトリ, DCM, カインズ, コーナン, ホームセンター]
+    keywords: [セリア, ダイソー, キャンドゥ, ダイソー, WELLBEINDUSTRY, ウエルヒ, 無印良品, ムジルシ, ニトリ, DCM, カインズ, コーナン, ホームセンター]
   - category: 日用品
     keywords: [クスリノアオキ, クスリのアオキ, ドラッグ, ト゛ラック゛, ドラツグ, マツモトキヨシ, ウエルシア, スギヤマ, ツルハ, VドラッグA, Vドラツグ]
 
@@ -67,8 +67,15 @@ rules:
     keywords: [アソビュー, どんぐりの湯, ドングリノユ, 恵みの湯, AGODA, ジャラン, ジヤラン, 温泉, スパ, 映画, シネマ, TOHO, イベント, チケット, ゴルフ, カラオケ]
 
   # --- その他支出（サブスク・医療・美容・衣服・家電など） ---
+  # --- 学習・ツール ---
+  # 副業のために使っているツール類。収益化していないので今は生活費の側に置くが、
+  # 💻の中長期目標への投資額としてそのまま読めるよう、独立したカテゴリにしてある。
+  # 副業が収益化したら、この1ブロックを副業経費に付け替えるだけでよい。
+  - category: 学習・ツール
+    keywords: [ANTHROPIC, CLAUDE, GOOGLEONE, GOOGLECLOUD, MICROSOFT, OPENAI, SUNO, ADOBE, GITHUB, NOTION, FIGMA, CURSOR]
+
   - category: その他支出
-    keywords: [ANTHROPIC, CLAUDE, GOOGLE, APPLE, AMAZON, AMAZONプライム, NETFLIX, SPOTIFY, ADOBE, MICROSOFT, OPENAI, SUNO, SALON.JP]
+    keywords: [GOOGLE, APPLE, AMAZON, AMAZONプライム, NETFLIX, SPOTIFY, SALON.JP]
   - category: その他支出
     keywords: [エイチアールシー, バースデイ, ユニクロ, UNIQLO, GU, しまむら, ヌノナ, ILLUSIE, コロリス, COLORIS, エンジェルルナ]
   - category: その他支出
