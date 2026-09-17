@@ -42,13 +42,17 @@ def load_rules(path):
         import yaml
         with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
+        exact = {}
+        for r in data.get("exact_rules") or []:
+            for store in r["stores"]:
+                exact[norm(store)] = r["category"]
         rules = [(r["category"], [norm(k) for k in r["keywords"]]) for r in data.get("rules", [])]
         excludes = [norm(k) for k in data.get("exclude_keywords") or []]
-        return rules, excludes
+        return exact, rules, excludes
     except ImportError:
         pass
 
-    rules, excludes, current, in_exclude = [], [], None, False
+    exact, rules, excludes, current, in_exclude = {}, [], [], None, False
     with open(path, encoding="utf-8") as f:
         for raw in f:
             line = raw.rstrip("\n")
@@ -69,7 +73,7 @@ def load_rules(path):
                 items = body.split(":", 1)[1].strip().strip("[]")
                 rules.append((current, [norm(k) for k in items.split(",") if k.strip()]))
                 current = None
-    return rules, excludes
+    return exact, rules, excludes
 
 
 def parse_amount(value):
@@ -112,15 +116,18 @@ def read_detail_rows(path):
     return rows, enc
 
 
-def classify(store, rules):
+def classify(store, exact, rules):
+    """完全一致のルールを先に見る。部分一致より優先しないと別の店を巻き込む。"""
     key = norm(store)
+    if key in exact:
+        return exact[key]
     for category, keywords in rules:
         if any(k and k in key for k in keywords):
             return category
     return None
 
 
-def aggregate(rows, rules, excludes, target_month=None):
+def aggregate(rows, exact, rules, excludes, target_month=None):
     totals, per_person, unmatched = {}, {}, {}
     dates, counted, skipped = [], 0, {"小計・合計行": 0, "請求なし（仮売上・返品）": 0, "除外": 0, "月外": 0}
 
@@ -152,7 +159,7 @@ def aggregate(rows, rules, excludes, target_month=None):
             skipped["月外"] += 1
             continue
 
-        category = classify(store, rules)
+        category = classify(store, exact, rules)
         if category is None:
             unmatched[store] = unmatched.get(store, 0) + billed
             category = "その他支出"
@@ -194,8 +201,8 @@ def main():
     args = p.parse_args()
 
     rows, encoding = read_detail_rows(args.csv_path)
-    rules, excludes = load_rules(args.rules)
-    out = aggregate(rows, rules, excludes, args.month)
+    exact, rules, excludes = load_rules(args.rules)
+    out = aggregate(rows, exact, rules, excludes, args.month)
     out["読み込み"] = {"明細行数": len(rows), "文字コード": encoding}
     json.dump(out, sys.stdout, ensure_ascii=False, indent=2)
     print()
