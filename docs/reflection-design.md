@@ -229,7 +229,7 @@ Notion MCP で 振り返りログDB に1ページ作成
   - [x] `questions.yaml` と `SKILL.md` を実装
   - [x] Routineを設定して定期実行に乗せる（4本）
   - [x] main へマージ
-  - [ ] RoutineにNotionコネクタを付与（claude.aiのRoutines画面での操作が必要）
+  - [x] RoutineにNotionコネクタを付与（2026-09-17、Routines画面で設定。4本すべてNotionのみ）
   - [ ] 🎯 目標DBに人生目標・中長期目標・短期目標を入れる
   - [ ] 1回分を実際に流して記録されることを確認
 - [ ] フェーズ4: 運用しながら質問を育てる
@@ -245,13 +245,15 @@ Notion MCP で 振り返りログDB に1ページ作成
 
 いずれも発火のたびに新しいセッションを作り、プッシュ通知を出す。
 
-### 既知の制約（Notionコネクタ）
+### 既知の制約（Notionコネクタ）※対応済み
 
 Routine を CLI から作成・更新しても **Notionコネクタを付与できない**。
 `connectors` パラメータが組織設定で無効化されており、
 `the connectors parameter is not available for this organization` が返る（確認済み）。
 
 このままでは発火したセッションに `mcp__Notion__*` ツールが無く、Notionに書き込めない。
+**2026-09-17に下記の手順で対応済み**（4本すべて Notion のみを含む状態）。
+Routineを新規作成・作り直した場合は、同じ手順を再度行う必要がある。
 
 **対応（claude.ai の画面での操作が必要）**
 
