@@ -227,8 +227,11 @@ Notion MCP で 振り返りログDB に1ページ作成
 - [x] フェーズ3: 構築
   - [x] Notionに3つのDBを作成
   - [x] `questions.yaml` と `SKILL.md` を実装
+  - [x] Routineを設定して定期実行に乗せる（4本）
+  - [x] main へマージ
+  - [ ] RoutineにNotionコネクタを付与（claude.aiのRoutines画面での操作が必要）
+  - [ ] 🎯 目標DBに人生目標・中長期目標・短期目標を入れる
   - [ ] 1回分を実際に流して記録されることを確認
-  - [ ] Routineを設定して定期実行に乗せる
 - [ ] フェーズ4: 運用しながら質問を育てる
 
 ## 9. 定期実行（Routine）
@@ -242,17 +245,26 @@ Notion MCP で 振り返りログDB に1ページ作成
 
 いずれも発火のたびに新しいセッションを作り、プッシュ通知を出す。
 
-### 既知の制約（要対応）
+### 既知の制約（Notionコネクタ）
 
-Routine を CLI から作成すると **Notionコネクタが引き継がれない**。
-このままでは発火したセッションが Notion に書き込めない。
+Routine を CLI から作成・更新しても **Notionコネクタを付与できない**。
+`connectors` パラメータが組織設定で無効化されており、
+`the connectors parameter is not available for this organization` が返る（確認済み）。
 
-対応：claude.ai の Routines 画面で各Routineを開き、Notionコネクタを有効にする。
-（またはRoutines画面から作り直す。プロンプトは上記のtrigger_idから確認できる）
+このままでは発火したセッションに `mcp__Notion__*` ツールが無く、Notionに書き込めない。
+
+**対応（claude.ai の画面での操作が必要）**
+1. claude.ai を開き、サイドバーから Routines（定期実行）を開く
+2. 上記4つのRoutineをそれぞれ開く
+3. コネクタ設定で **Notion** を有効にして保存
+
+この操作をしない場合、Routineは「質問はできるが保存はできない」状態になる。
+その場合の回避策として、振り返り自体はコネクタを持つ通常のセッションから
+「振り返り」と話しかけて実行し、Routineは通知役に留める運用も可能。
 
 ### 前提
 
 Routineが作るセッションは既定ブランチをクローンするため、
-`.claude/skills/reflection/` が main に入っていないとスキルが読まれない。
-各Routineのプロンプトにはフォールバックとして手順とDB IDを直書きしてあるので
-未マージでも動作はするが、**main へのマージ後が本来の状態**。
+`.claude/skills/reflection/` が main にある必要がある。**マージ済み**（2026-09-17）。
+各Routineのプロンプトには、スキルが読めなかった場合のフォールバックとして
+手順とDB IDを直書きしてある。
