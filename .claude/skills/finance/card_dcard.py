@@ -23,7 +23,18 @@ import unicodedata
 
 ENCODINGS = ["utf-8-sig", "cp932", "utf-8"]
 SECTION_BREAK = "キャッシングご返済明細"
-HEADER_FIRST_COL = "名前"
+
+# dカードには書き出し方が2種類あり、列も金額の意味も違う。ヘッダーで見分ける。
+#   A「ご利用内訳明細」  … 名前で始まる。請求額は「支払い金額」。末尾に小計行あり。
+#                         仮売上と返品の対は支払い金額が空欄になるので自然に落ちる。
+#   B「ご利用明細照会」  … ご利用年月日で始まる。金額は「ご利用金額」1列のみ。
+#                         返品はマイナス行として現れるので、符号つきで合計すれば相殺される。
+LAYOUTS = {
+    "名前": {"name": "ご利用内訳明細", "date": "ご利用年月日", "store": "利用店名",
+             "amount": "支払い金額", "signed": False, "who": "名前"},
+    "ご利用年月日": {"name": "ご利用明細照会", "date": "ご利用年月日", "store": "利用店名",
+                     "amount": "ご利用金額", "signed": True, "who": "カード利用者区分"},
+}
 
 
 # 店名にはハイフンに見える文字が何種類も混ざる（セブン‐イレブン の ‐ は U+2010 で、
@@ -31,9 +42,22 @@ HEADER_FIRST_COL = "名前"
 DASHES = dict.fromkeys(map(ord, "-‐‑‒–—―ー－_・､，,．"), None)
 
 
+# 濁点・半濁点が独立した文字として混ざる（「マクト゛ナルト゛」= マクドナルド）。
+# 照合する両側から落としてしまえば、どちらの書き方でも一致する。
+VOICED = "\u3099\u309a\u309b\u309c"
+
+
 def norm(text):
-    """全角・半角、大文字小文字、区切り記号の揺れを吸収する。ＥＮＥＯＳ と ENEOS を同じ扱いにする。"""
+    """全角・半角、大文字小文字、区切り記号、濁点の揺れを吸収する。
+
+    ＥＮＥＯＳ と ENEOS、マクト゛ナルト゛ と マクドナルド を同じ扱いにする。
+    濁点を落とすので理論上は「ハロー」と「バロー」が衝突するが、
+    店名の判定では実害より取りこぼしを防ぐ効果のほうが大きい。
+    """
     s = unicodedata.normalize("NFKC", str(text or "")).upper()
+    s = unicodedata.normalize("NFD", s)
+    s = "".join(ch for ch in s if ch not in VOICED)
+    s = unicodedata.normalize("NFC", s)
     return s.translate(DASHES).replace(" ", "").replace("\u3000", "")
 
 
@@ -100,11 +124,18 @@ def read_detail_rows(path):
         raise SystemExit(f"CSVの文字コードを判定できませんでした: {last_err}")
 
     all_rows = list(csv.reader(io.StringIO(text)))
-    header_index = next(
-        (i for i, r in enumerate(all_rows) if r and norm(r[0]) == norm(HEADER_FIRST_COL)), None
-    )
-    if header_index is None:
-        raise SystemExit("ヘッダー行（名前,カード番号,…）が見つかりません。dカードの明細CSVか確認してください。")
+    header_index = layout = None
+    for i, r in enumerate(all_rows):
+        if not r:
+            continue
+        for first_col, spec in LAYOUTS.items():
+            if norm(r[0]) == norm(first_col):
+                header_index, layout = i, spec
+                break
+        if layout:
+            break
+    if layout is None:
+        raise SystemExit("ヘッダー行が見つかりません。dカードの明細CSVか確認してください。")
 
     header = [h.strip() for h in all_rows[header_index]]
     rows = []
@@ -113,7 +144,7 @@ def read_detail_rows(path):
             break  # キャッシングご返済明細セクションに入ったので打ち切る
         if len(row) >= len(header):
             rows.append(dict(zip(header, row)))
-    return rows, enc
+    return rows, enc, layout
 
 
 def classify(store, exact, rules):
@@ -127,23 +158,28 @@ def classify(store, exact, rules):
     return None
 
 
-def aggregate(rows, exact, rules, excludes, target_month=None):
+def aggregate(rows, exact, rules, excludes, layout, target_month=None):
     totals, per_person, unmatched = {}, {}, {}
     dates, counted, skipped = [], 0, {"小計・合計行": 0, "請求なし（仮売上・返品）": 0, "除外": 0, "月外": 0}
 
     for row in rows:
-        store = (row.get("利用店名") or "").strip()
-        date = (row.get("ご利用年月日") or "").strip()
-        person = (row.get("名前") or "").strip()
+        store = (row.get(layout["store"]) or "").strip()
+        date = (row.get(layout["date"]) or "").strip()
+        person = (row.get(layout["who"]) or "").strip()
 
         # 名義ごとの小計行・総合計行。日付が無い、または店名欄が「＜◯◯様」になっている。
         if not date or store.startswith("＜") or store.startswith("<"):
             skipped["小計・合計行"] += 1
             continue
 
-        # 請求額。仮売上と返品の対は両方とも空欄になるので、ここで自然に落ちる。
-        billed = parse_amount(row.get("支払い金額"))
+        # A形式では請求額である「支払い金額」を使う。仮売上と返品の対は両方とも空欄なので
+        # ここで自然に落ちる。B形式は「ご利用金額」1列しかなく、返品はマイナス行として
+        # 現れるため、符号つきのまま合計して相殺させる。
+        billed = parse_amount(row.get(layout["amount"]))
         if billed is None or billed == 0:
+            skipped["請求なし（仮売上・返品）"] += 1
+            continue
+        if not layout["signed"] and billed < 0:
             skipped["請求なし（仮売上・返品）"] += 1
             continue
 
@@ -163,6 +199,7 @@ def aggregate(rows, exact, rules, excludes, target_month=None):
         if category is None:
             unmatched[store] = unmatched.get(store, 0) + billed
             category = "その他支出"
+        # B形式は返品がマイナス行で来るので、符号のまま足して相殺させる。
 
         totals[category] = totals.get(category, 0) + billed
         per_person[person] = per_person.get(person, 0) + billed
@@ -184,6 +221,7 @@ def aggregate(rows, exact, rules, excludes, target_month=None):
         warnings.append(f"未分類「{store}」{amount:,}円 → その他支出に入れました。rules_store.yaml に追記してください。")
 
     return {
+        "書式": layout["name"],
         "対象期間": period,
         "カテゴリ別": dict(sorted(totals.items(), key=lambda kv: -kv[1])),
         "合計": sum(totals.values()),
@@ -200,9 +238,9 @@ def main():
     p.add_argument("--rules", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "rules_store.yaml"))
     args = p.parse_args()
 
-    rows, encoding = read_detail_rows(args.csv_path)
+    rows, encoding, layout = read_detail_rows(args.csv_path)
     exact, rules, excludes = load_rules(args.rules)
-    out = aggregate(rows, exact, rules, excludes, args.month)
+    out = aggregate(rows, exact, rules, excludes, layout, args.month)
     out["読み込み"] = {"明細行数": len(rows), "文字コード": encoding}
     json.dump(out, sys.stdout, ensure_ascii=False, indent=2)
     print()
